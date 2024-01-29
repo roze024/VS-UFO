@@ -11,13 +11,12 @@
 #define N_BULLET 5 //敵の弾の最大数
 #define N_UFO 32 //UFOの数
 #define N_BEAM 2 //自機の弾の最大数
-#define S_TIME 10 //発射間隔
 
 typedef struct {
-        double px, py; 
+        double px, py;
         double vx, vy;
         double sx, sy;
-        int    life;   
+        int    life;
 } Object;
 
 void InitObject(Object *obj, double px, double py, double vx, double vy, double sx, double sy, int life)
@@ -28,7 +27,7 @@ void InitObject(Object *obj, double px, double py, double vx, double vy, double 
         obj->life = life;
 }
 
-void InitUFO(Object ufo[], int n)
+void InitUFO(Object ufo[], int n, double vx)
 {
         int i, h, w;
         int x = 1;
@@ -37,13 +36,33 @@ void InitUFO(Object ufo[], int n)
         getmaxyx(stdscr, h, w);
 
         for (i = 0; i < n; i++) {
-                InitObject(&ufo[i], (((w/10)*3)+(10*(x))), (6+(4*y)), 0.0, 0.0, 3.0, 2.0, 1);
+                InitObject(&ufo[i], (((w/10)*3)+(10*(x))), (2+(4*y)), vx, 0.0, 3.0, 2.0, 1);
                 x++;
                 if ((x%9) == 0) {
                         y++;
                         x = 1;
                 }
         }
+}
+
+void InitBullet (Object bullet[], int n)
+{
+
+}
+
+void InitBeam (Object beam[], int n)
+{
+        int i;
+
+        for (i = 0; i < n; i++) {
+                InitObject(&beam[i], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0 );
+        }
+}
+
+int BeamAmo (Object beam[])
+{
+        if (beam->py <= 0) return 0;
+        return 1;
 }
 
 void MoveObject(Object *obj)
@@ -110,15 +129,30 @@ void MoveBeam (Object *beam)
 
 }
 
-void MoveUFO(Object *obj)
+void MoveUFO (Object ufo[], int n)
 {
-        int w, h;
+        int i, j, w, h;
 
+        n = N_UFO;
         getmaxyx(stdscr, h, w);
-        MoveObject(obj);
 
-        sleep(30000);
+        for (i = 0; i < n; i++) {
+                if (ufo[i].life == 1) MoveObject(&ufo[i]);
+               
+                if ((int)ufo[i].px == (WALLR-3)) {
+                        for (j = 0; j < N_UFO; j++) {
+                                ufo[j].vx = -0.1;
+                                ufo[j].py++;
+                        }
+                }
 
+                if ((int)ufo[i].px == (WALLL+3)) {
+                        for (j = 0; j < N_UFO; j++) {
+                                ufo[j].vx = 0.1;
+                                ufo[j].py++;
+                        }
+                }
+        }
 }
 
 void DrawUFO(Object *ufo)
@@ -173,11 +207,11 @@ void DrawLife(Object *roketto)
 
         getmaxyx(stdscr, h, w);
 
-        mvaddstr(h-5, 2, "#      #####  #####  #####"); //AAに変える
+        mvaddstr(h-5, 2, "#      #####  #####  #####");
         mvaddstr(h-4, 2, "#        #    #      #    ");
         mvaddstr(h-3, 2, "#        #    ####   #### ");
         mvaddstr(h-2, 2, "#        #    #      #    ");
-        mvaddstr(h-1, 2,  "#####  #####  #      #####");
+        mvaddstr(h-1, 2, "#####  #####  #      #####");
 
         while (i != 0) {
                 mvaddstr(h-4, (25+(i * 8)), "   A   ");
@@ -188,15 +222,15 @@ void DrawLife(Object *roketto)
         }
 
 }
-
-void DrawScore (int s) 
+/*
+void DrawScore (int s)
 {
         int h, w;
 
         getmaxyx(stdscr, h, w);
 
 }
-
+*/
 void DrawRoketto(Object *roketto)
 {
         int x, y;
@@ -226,32 +260,29 @@ void Game()
         Object ufo[N_UFO];
         Object roketto;
         Object bullet;
-        Object beam;
+        Object beam[N_BEAM];
         int h, w, i, j;
-        int key;
-        int ux, uy;
+        int key, fire;
+        int bamo = 0;
 
         srand(time(NULL));
 
         getmaxyx(stdscr, h, w);
-        InitObject(&beam, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0);
-        InitObject(&roketto, ((w/2)-SPACE), (h-5), 0.0, 0.0, 3.0, 2.0, 2);
+        InitBeam(beam, N_BEAM);
+        InitObject(&roketto, ((w/2)-SPACE), (h-3), 0.0, 0.0, 3.0, 2.0, 2);
         InitObject(&bullet, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0);
-        InitUFO(ufo, N_UFO);
-        
+        InitUFO(ufo, N_UFO, 0.1);
+
         //InitObject(&boss, ((w/2)-9), 25, 0.0, 0.0, 12.0, 3.0, 30); //位置調整の-9
 
-        /*while (i = 0; i++; i <=23) {
-                ufos[i] =
-        }*/
 
         timeout(0);
         while (1) {
                 erase();
+                fire = 0;
                 DrawWall();
                 DrawLife(&roketto);
                 DrawRoketto(&roketto);
-                MoveRoketto(&roketto);
 
                 for (i = 0; i < N_UFO; i++) {
                         if (ufo[i].life == 1) {
@@ -264,41 +295,74 @@ void Game()
                         }
                 }
 
-                if (beam.life != 0) DrawBeam(&beam);
+
+                for (j = 0; j < N_BEAM; j++) {
+                        if (beam[j].life != 0) DrawBeam(&beam[j]);
+                }
 
                 refresh();
 
                 key = getch();
                 switch (key) {
-                case 'd' : roketto.px += 1; break;  
-                case 'a' : roketto.px -= 1; break;  
-                case ' ' : if (beam.life != 0) break;
-                           else {
-                                        InitObject(&beam, (roketto.px + 3), (roketto.py - 3), 0.0, 0.0, 0.0, 0.0, 1);
-                                        break;
-                           }  
-                case 'p' : return;                 
+                case 'd' : roketto.px += 1; break;
+                case 'a' : roketto.px -= 1; break;
+                case ' ' : fire = 1; break;
+                case 'p' : return;
                 }
 
-                for (i = 0; i < N_UFO; i++) {
-                        if (beam.life != 0) {
-                                if (Hit(&beam, &ufo[i]) != 0) {
-                                        beam.life = 0;
-                                        ufo[i].life = 0;
-                                        break;
+                MoveRoketto(&roketto);
+                MoveUFO(ufo, N_UFO);
+
+                if (bamo < N_BEAM) {
+                        if (fire == 1) {
+                                if (beam[bamo].life != 1) {
+                                        InitObject(&beam[bamo], (roketto.px + 3), (roketto.py - 3), 0.0, 0.0, 0.0, 0.0, 1);
+                                        bamo++;
                                 }
+                                else continue;
                         }
                 }
 
+                for (j = 0; j < N_BEAM; j++) {
+                        for (i = 0; i < N_UFO; i++) {
+                                if (beam[j].life != 0) {
+                                        if (Hit(&beam[j], &ufo[i]) != 0) {
+                                                beam[j].life = 0;
+                                                ufo[i].life = 0;
+                                                bamo--;
+                                                break;
+                                        }
+                                }
 
-                if (beam.life != 0) {
-                        MoveBeam(&beam);
+                                //if ((int)ufo[i].py == (h-3)) Title();
+                        }
+                }
+
+                for (j = 0; j < N_BEAM; j++) {
+                        if (beam[j].life != 0) {
+                                MoveBeam(&beam[j]);
+                                if (BeamAmo(&beam[j]) != 1) bamo--;
+                        }
                 }
 
                 usleep(20000);
         }
 }
 
+/*int GameOver()
+{
+        int h, w, key;
+
+        getmaxyx(stdscr, h, w);
+
+        erase();
+        mvaddstr(h/2-11, ((w/2)-26), "Game Over");
+        mvaddstr(h/2-10, ((w/2)-27), "[R] to Restart");
+
+        timeout(-1);
+
+}
+*/
 int Title()
 {
         int h, w, key;
